@@ -12,14 +12,11 @@ public class ProductsController(
     ILogger<ProductsController> logger) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<PagedResult<Product>>> GetAll([FromQuery] int? page, [FromQuery] int? pageSize, CancellationToken cancellationToken)
+    public async Task<ActionResult<PagedResult<Product>>> GetAll([FromQuery] PagingQuery paging, CancellationToken cancellationToken)
     {
-        if (page.HasValue && page <= 0) return BadRequest("Page must be > 0");
-        if (pageSize.HasValue && pageSize <= 0) return BadRequest("PageSize must be > 0");
-
         try
         {
-            var paged = await productService.GetAllProductsAsync(page, pageSize, cancellationToken);
+            var paged = await productService.GetAllProductsAsync(paging.EffectivePage, paging.EffectivePageSize, cancellationToken);
             return Ok(paged.MapToApiPagedResult());
         }
         catch (Exception ex)
@@ -40,7 +37,7 @@ public class ProductsController(
                 return NotFound();
             }
 
-            return Ok(product);
+            return Ok(product.MapToApiProduct());
         }
         catch (Exception ex)
         {
@@ -56,20 +53,12 @@ public class ProductsController(
         {
             return ValidationProblem(ModelState);
         }
-        if (string.IsNullOrWhiteSpace(product.Name))
-        {
-            return BadRequest("Name is required");
-        }
-        if (product.Price < 0)
-        {
-            return BadRequest("Price must be non-negative");
-        }
 
         try
         {
             var createdProduct = await productService.AddProductAsync(product.MapToBlProduct(), cancellationToken);
-
-            return CreatedAtAction(nameof(GetById), new { id = createdProduct.Id }, createdProduct);
+            var apiModel = createdProduct.MapToApiProduct();
+            return CreatedAtAction(nameof(GetById), new { id = apiModel.Id }, apiModel);
         }
         catch (Exception ex)
         {
@@ -81,13 +70,9 @@ public class ProductsController(
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<Product>> Update(Guid id, [FromBody] Product product, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(product.Name))
+        if (!ModelState.IsValid)
         {
-            return BadRequest("Name is required");
-        }
-        if (product.Price < 0)
-        {
-            return BadRequest("Price must be non-negative");
+            return ValidationProblem(ModelState);
         }
 
         try
@@ -98,7 +83,7 @@ public class ProductsController(
                 return NotFound();
             }
 
-            return Ok(updatedProduct);
+            return Ok(updatedProduct.MapToApiProduct());
         }
         catch (Exception ex)
         {

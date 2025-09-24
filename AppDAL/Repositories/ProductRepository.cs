@@ -11,13 +11,13 @@ public class ProductRepository() : IRepository<Product>
 
     public async Task<Product> AddAsync(Product product, CancellationToken cancellationToken = default)
     {
-        product.Id = Guid.NewGuid();
+        var newProduct = product with { Id = Guid.NewGuid() };
         lock (_syncRoot)
         {
-            _productList = _productList.Add(product);
+            _productList = _productList.Add(newProduct);
         }
 
-        return await Task.FromResult(product);
+        return await Task.FromResult(newProduct);
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
@@ -71,18 +71,17 @@ public class ProductRepository() : IRepository<Product>
 
     public async Task<Product?> UpdateAsync(Guid id, Product updated, CancellationToken cancellationToken = default)
     {
-        var existingProduct = _productList.FirstOrDefault(p => p.Id == id);
-        if (existingProduct == null) return null;
-
+        Product? newProduct = null;
         lock (_syncRoot)
         {
-            existingProduct.Name = updated.Name;
-            existingProduct.Description = updated.Description;
-            existingProduct.Price = updated.Price;
-            existingProduct.Category = updated.Category;
+            var index = _productList.FindIndex(p => p.Id == id);
+            if (index >= 0)
+            {
+                newProduct = updated with { Id = _productList[index].Id };
+                _productList = _productList.SetItem(index, newProduct);
+            }
         }
-
-        return await Task.FromResult<Product?>(existingProduct);
+        return await Task.FromResult(newProduct);
     }
 
     private static IEnumerable<Product> GetSeedData() =>

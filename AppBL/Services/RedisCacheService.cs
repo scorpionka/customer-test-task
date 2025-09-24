@@ -39,7 +39,7 @@ public class RedisCacheService<TEntity>(IDistributedCache distributedCache, ICon
 
     public async Task<TEntity?> GetByIdAsync(Guid id, Func<Task<TEntity?>> valueFactory, CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"{typeof(TEntity).Name.ToLowerInvariant()}_byid_{id}";
+        var cacheKey = $"{typeof(TEntity).Name.ToLowerInvariant()}s_byid_{id}";
         var cachedJson = await distributedCache.GetStringAsync(cacheKey, cancellationToken);
 
         if (!string.IsNullOrEmpty(cachedJson))

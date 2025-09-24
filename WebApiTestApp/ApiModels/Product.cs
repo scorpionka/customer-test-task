@@ -1,10 +1,18 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace WebApiTestApp.ApiModels;
 
 public sealed record Product
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
-    public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public decimal Price { get; set; }
-    public string Category { get; set; } = string.Empty;
+    public Guid Id { get; init; } = Guid.NewGuid();
+    [Required]
+    [StringLength(100)]
+    public string Name { get; init; } = string.Empty;
+    [StringLength(500)]
+    public string Description { get; init; } = string.Empty;
+    [Range(0, 9999999)]
+    public decimal Price { get; init; }
+    [Required]
+    [StringLength(100)]
+    public string Category { get; init; } = string.Empty;
 }
