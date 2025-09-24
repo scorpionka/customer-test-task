@@ -1,6 +1,6 @@
 ﻿namespace WebApiTestApp.ApiModels;
 
-public sealed record PagedResult<T>
+public sealed class PagedResult<T>
 {
     public IEnumerable<T> Items { get; set; } = [];
     public int TotalCount { get; set; }

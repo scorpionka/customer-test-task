@@ -1,6 +1,6 @@
 ﻿namespace AppBL.BlModels;
 
-public sealed record PagedResult<TEntity>
+public sealed class PagedResult<TEntity>
 {
     public IEnumerable<TEntity> Items { get; set; } = [];
     public int TotalCount { get; set; }

@@ -6,8 +6,8 @@ using AppDAL.Repositories;
 using AppDAL.Repositories.Interfaces;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
-using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+using WebApiTestApp.Health;
 
 using DalProduct = AppDAL.DalModels.Product;
 
@@ -33,18 +33,21 @@ builder.Services.AddOpenApi();
 
 // Configure Redis cache
 var redisSection = builder.Configuration.GetSection("Redis");
-var redisOptions = redisSection.Get<RedisCacheOptions>() ?? new RedisCacheOptions();
-Validator.ValidateObject(redisOptions, new ValidationContext(redisOptions), true);
-builder.Services.Configure<RedisCacheOptions>(redisSection);
+builder.Services.AddOptions<RedisCacheOptions>()
+    .Bind(redisSection)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+var redisConfig = redisSection.GetValue<string>(nameof(RedisCacheOptions.Configuration));
 
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = redisOptions.Configuration;
+    options.Configuration = redisConfig;
 });
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
-    var configurationOptions = ConfigurationOptions.Parse(redisOptions.Configuration);
+    var configurationOptions = ConfigurationOptions.Parse(redisConfig!);
     configurationOptions.AbortOnConnectFail = false;
     configurationOptions.ConnectRetry = 3;
     configurationOptions.ReconnectRetryPolicy = new ExponentialRetry(5000);
@@ -56,6 +59,8 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 builder.Services.AddSingleton<IRepository<DalProduct>, ProductRepository>();
 builder.Services.AddSingleton<ICacheService<Product>, RedisCacheService<Product>>();
 builder.Services.AddScoped<IProductService, ProductService>();
+
+builder.Services.AddHealthChecks().AddCheck<RedisHealthCheck>("redis");
 
 var app = builder.Build();
 
@@ -76,5 +81,6 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
