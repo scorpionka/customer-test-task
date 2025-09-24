@@ -4,7 +4,7 @@ namespace WebApiTestApp.ApiModels;
 
 public sealed record Product
 {
-    public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid Id { get; init; }
     [Required]
     [StringLength(100)]
     public string Name { get; init; } = string.Empty;
