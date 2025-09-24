@@ -1,9 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36511.14 d17.14
+VisualStudioVersion = 17.14.36511.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApiTestApp", "WebApiTestApp\WebApiTestApp.csproj", "{22B9AC6C-EEC9-424B-8109-178D1F3E492A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppBL", "AppBL\AppBL.csproj", "{027F7650-D72B-4134-95B6-E66FE8FBCE19}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppDAL", "AppDAL\AppDAL.csproj", "{4F7270E3-4855-48A7-86C5-31250D682EB4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +19,14 @@ Global
 		{22B9AC6C-EEC9-424B-8109-178D1F3E492A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{22B9AC6C-EEC9-424B-8109-178D1F3E492A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{22B9AC6C-EEC9-424B-8109-178D1F3E492A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{027F7650-D72B-4134-95B6-E66FE8FBCE19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{027F7650-D72B-4134-95B6-E66FE8FBCE19}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{027F7650-D72B-4134-95B6-E66FE8FBCE19}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{027F7650-D72B-4134-95B6-E66FE8FBCE19}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4F7270E3-4855-48A7-86C5-31250D682EB4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4F7270E3-4855-48A7-86C5-31250D682EB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4F7270E3-4855-48A7-86C5-31250D682EB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4F7270E3-4855-48A7-86C5-31250D682EB4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

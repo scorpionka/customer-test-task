@@ -13,4 +13,9 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\AppBL\AppBL.csproj" />
+    <ProjectReference Include="..\AppDAL\AppDAL.csproj" />
+  </ItemGroup>
+
 </Project>
