@@ -12,14 +12,14 @@ public class ProductsController(
     ILogger<ProductsController> logger) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<PagedResult<Product>>> GetAll([FromQuery] int? page = null, [FromQuery] int? pageSize = null)
+    public async Task<ActionResult<PagedResult<Product>>> GetAll([FromQuery] int? page, [FromQuery] int? pageSize, CancellationToken cancellationToken)
     {
         if (page.HasValue && page <= 0) return BadRequest("Page must be > 0");
         if (pageSize.HasValue && pageSize <= 0) return BadRequest("PageSize must be > 0");
 
         try
         {
-            var paged = await productService.GetAllProductsAsync(page, pageSize);
+            var paged = await productService.GetAllProductsAsync(page, pageSize, cancellationToken);
             return Ok(paged.MapToApiPagedResult());
         }
         catch (Exception ex)
@@ -30,11 +30,11 @@ public class ProductsController(
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<Product>> GetById(Guid id)
+    public async Task<ActionResult<Product>> GetById(Guid id, CancellationToken cancellationToken)
     {
         try
         {
-            var product = await productService.GetProductByIdAsync(id);
+            var product = await productService.GetProductByIdAsync(id, cancellationToken);
             if (product == null)
             {
                 return NotFound();
@@ -50,7 +50,7 @@ public class ProductsController(
     }
 
     [HttpPost]
-    public async Task<ActionResult<Product>> Create([FromBody] Product product)
+    public async Task<ActionResult<Product>> Create([FromBody] Product product, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
         {
@@ -67,7 +67,7 @@ public class ProductsController(
 
         try
         {
-            var createdProduct = await productService.AddProductAsync(product.MapToBlProduct());
+            var createdProduct = await productService.AddProductAsync(product.MapToBlProduct(), cancellationToken);
 
             return CreatedAtAction(nameof(GetById), new { id = createdProduct.Id }, createdProduct);
         }
@@ -79,7 +79,7 @@ public class ProductsController(
     }
 
     [HttpPut("{id:guid}")]
-    public async Task<ActionResult<Product>> Update(Guid id, [FromBody] Product product)
+    public async Task<ActionResult<Product>> Update(Guid id, [FromBody] Product product, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(product.Name))
         {
@@ -92,7 +92,7 @@ public class ProductsController(
 
         try
         {
-            var updatedProduct = await productService.UpdateProductAsync(id, product.MapToBlProduct());
+            var updatedProduct = await productService.UpdateProductAsync(id, product.MapToBlProduct(), cancellationToken);
             if (updatedProduct == null)
             {
                 return NotFound();
@@ -108,11 +108,11 @@ public class ProductsController(
     }
 
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id)
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         try
         {
-            var deleted = await productService.DeleteProductAsync(id);
+            var deleted = await productService.DeleteProductAsync(id, cancellationToken);
             if (!deleted)
             {
                 return NotFound();

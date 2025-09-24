@@ -11,9 +11,9 @@ public class RedisCacheService<TEntity>(IDistributedCache distributedCache, ICon
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
     private readonly string _registrySetName = $"{typeof(TEntity).Name.ToLowerInvariant()}_cache_keys";
 
-    public async Task<PagedResult<TEntity>> GetAllAsync(Func<Task<PagedResult<TEntity>>> valueFactory, string cacheKey)
+    public async Task<PagedResult<TEntity>> GetAllAsync(Func<Task<PagedResult<TEntity>>> valueFactory, string cacheKey, CancellationToken cancellationToken = default)
     {
-        var cachedJson = await distributedCache.GetStringAsync(cacheKey);
+        var cachedJson = await distributedCache.GetStringAsync(cacheKey, cancellationToken);
         if (!string.IsNullOrEmpty(cachedJson))
         {
             var cachedResult = JsonSerializer.Deserialize<PagedResult<TEntity>>(cachedJson);
@@ -27,19 +27,17 @@ public class RedisCacheService<TEntity>(IDistributedCache distributedCache, ICon
 
         if (result.Items.Any())
         {
-            await distributedCache.SetStringAsync(cacheKey, JsonSerializer.Serialize(result),
-                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheDuration });
-
+            await distributedCache.SetStringAsync(cacheKey, JsonSerializer.Serialize(result), new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheDuration }, cancellationToken);
             await redisConnection.GetDatabase().SetAddAsync(_registrySetName, cacheKey);
         }
 
         return result;
     }
 
-    public async Task<TEntity?> GetByIdAsync(Guid id, Func<Task<TEntity?>> valueFactory)
+    public async Task<TEntity?> GetByIdAsync(Guid id, Func<Task<TEntity?>> valueFactory, CancellationToken cancellationToken = default)
     {
         var cacheKey = $"{typeof(TEntity).Name.ToLowerInvariant()}_byid_{id}";
-        var cachedJson = await distributedCache.GetStringAsync(cacheKey);
+        var cachedJson = await distributedCache.GetStringAsync(cacheKey, cancellationToken);
 
         if (!string.IsNullOrEmpty(cachedJson))
             return JsonSerializer.Deserialize<TEntity>(cachedJson);
@@ -48,26 +46,24 @@ public class RedisCacheService<TEntity>(IDistributedCache distributedCache, ICon
 
         if (entity != null)
         {
-            await distributedCache.SetStringAsync(cacheKey, JsonSerializer.Serialize(entity),
-                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheDuration });
-
+            await distributedCache.SetStringAsync(cacheKey, JsonSerializer.Serialize(entity), new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheDuration }, cancellationToken);
             await redisConnection.GetDatabase().SetAddAsync(_registrySetName, cacheKey);
         }
 
         return entity;
     }
 
-    public async Task InvalidateAsync(params string[] cacheKeys)
+    public async Task InvalidateAsync(CancellationToken cancellationToken = default, params string[] cacheKeys)
     {
         var db = redisConnection.GetDatabase();
         foreach (var cacheKey in cacheKeys)
         {
-            await distributedCache.RemoveAsync(cacheKey);
+            await distributedCache.RemoveAsync(cacheKey, cancellationToken);
             await db.SetRemoveAsync(_registrySetName, cacheKey);
         }
     }
 
-    public async Task InvalidateByPrefixAsync(string cacheKeyPrefix)
+    public async Task InvalidateByPrefixAsync(string cacheKeyPrefix, CancellationToken cancellationToken = default)
     {
         var db = redisConnection.GetDatabase();
         var keys = await db.SetMembersAsync(_registrySetName);
@@ -78,7 +74,7 @@ public class RedisCacheService<TEntity>(IDistributedCache distributedCache, ICon
 
             if (!string.IsNullOrEmpty(cachedKey) && cachedKey.StartsWith(cacheKeyPrefix, StringComparison.OrdinalIgnoreCase))
             {
-                await distributedCache.RemoveAsync(cachedKey);
+                await distributedCache.RemoveAsync(cachedKey, cancellationToken);
                 await db.SetRemoveAsync(_registrySetName, cachedKey);
             }
         }

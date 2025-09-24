@@ -9,7 +9,7 @@ public class ProductRepository() : IRepository<Product>
     private ImmutableList<Product> _productList = [.. GetSeedData()];
     private readonly Lock _syncRoot = new();
 
-    public async Task<Product> AddAsync(Product product)
+    public async Task<Product> AddAsync(Product product, CancellationToken cancellationToken = default)
     {
         product.Id = Guid.NewGuid();
         lock (_syncRoot)
@@ -20,7 +20,7 @@ public class ProductRepository() : IRepository<Product>
         return await Task.FromResult(product);
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         bool isRemoved = false;
         lock (_syncRoot)
@@ -36,7 +36,7 @@ public class ProductRepository() : IRepository<Product>
         return await Task.FromResult(isRemoved);
     }
 
-    public async Task<PagedResult<Product>> GetAllAsync(int? page = null, int? pageSize = null)
+    public async Task<PagedResult<Product>> GetAllAsync(int? page = null, int? pageSize = null, CancellationToken cancellationToken = default)
     {
         IEnumerable<Product> items;
         int totalCount;
@@ -63,13 +63,13 @@ public class ProductRepository() : IRepository<Product>
         return await Task.FromResult(pagedResult);
     }
 
-    public async Task<Product?> GetByIdAsync(Guid id)
+    public async Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var product = _productList.FirstOrDefault(p => p.Id == id);
         return await Task.FromResult(product);
     }
 
-    public async Task<Product?> UpdateAsync(Guid id, Product updated)
+    public async Task<Product?> UpdateAsync(Guid id, Product updated, CancellationToken cancellationToken = default)
     {
         var existingProduct = _productList.FirstOrDefault(p => p.Id == id);
         if (existingProduct == null) return null;
