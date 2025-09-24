@@ -9,6 +9,7 @@ namespace AppBL.Services;
 public class RedisCacheService<TEntity>(IDistributedCache distributedCache, IConnectionMultiplexer redisConnection) : ICacheService<TEntity>
 {
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly string _registrySetName = $"{typeof(TEntity).Name.ToLowerInvariant()}_cache_keys";
 
     public async Task<PagedResult<TEntity>> GetAllAsync(Func<Task<PagedResult<TEntity>>> valueFactory, string cacheKey, CancellationToken cancellationToken = default)
@@ -16,7 +17,7 @@ public class RedisCacheService<TEntity>(IDistributedCache distributedCache, ICon
         var cachedJson = await distributedCache.GetStringAsync(cacheKey, cancellationToken);
         if (!string.IsNullOrEmpty(cachedJson))
         {
-            var cachedResult = JsonSerializer.Deserialize<PagedResult<TEntity>>(cachedJson);
+            var cachedResult = JsonSerializer.Deserialize<PagedResult<TEntity>>(cachedJson, JsonOptions);
             if (cachedResult != null)
             {
                 return cachedResult;
@@ -27,7 +28,7 @@ public class RedisCacheService<TEntity>(IDistributedCache distributedCache, ICon
 
         if (result.Items.Any())
         {
-            await distributedCache.SetStringAsync(cacheKey, JsonSerializer.Serialize(result), new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheDuration }, cancellationToken);
+            await distributedCache.SetStringAsync(cacheKey, JsonSerializer.Serialize(result, JsonOptions), new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheDuration }, cancellationToken);
             await redisConnection.GetDatabase().SetAddAsync(_registrySetName, cacheKey);
         }
 
@@ -40,13 +41,13 @@ public class RedisCacheService<TEntity>(IDistributedCache distributedCache, ICon
         var cachedJson = await distributedCache.GetStringAsync(cacheKey, cancellationToken);
 
         if (!string.IsNullOrEmpty(cachedJson))
-            return JsonSerializer.Deserialize<TEntity>(cachedJson);
+            return JsonSerializer.Deserialize<TEntity>(cachedJson, JsonOptions);
 
         var entity = await valueFactory();
 
         if (entity != null)
         {
-            await distributedCache.SetStringAsync(cacheKey, JsonSerializer.Serialize(entity), new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheDuration }, cancellationToken);
+            await distributedCache.SetStringAsync(cacheKey, JsonSerializer.Serialize(entity, JsonOptions), new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheDuration }, cancellationToken);
             await redisConnection.GetDatabase().SetAddAsync(_registrySetName, cacheKey);
         }
 
