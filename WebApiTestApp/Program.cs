@@ -1,10 +1,12 @@
 using AppBL.BlModels;
+using AppBL.Configuration;
 using AppBL.Services;
 using AppBL.Services.Interfaces;
 using AppDAL.Repositories;
 using AppDAL.Repositories.Interfaces;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
+using System.ComponentModel.DataAnnotations;
 
 using DalProduct = AppDAL.DalModels.Product;
 
@@ -25,18 +27,24 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddOpenApi();
 
 // Configure Redis cache
-var redisConfiguration = builder.Configuration.GetSection("Redis").GetValue<string>("Configuration");
-if (string.IsNullOrEmpty(redisConfiguration))
-{
-    throw new InvalidOperationException("Redis configuration is missing in appsettings.json");
-}
+var redisSection = builder.Configuration.GetSection("Redis");
+var redisOptions = redisSection.Get<RedisCacheOptions>() ?? new RedisCacheOptions();
+Validator.ValidateObject(redisOptions, new ValidationContext(redisOptions), true);
+builder.Services.Configure<RedisCacheOptions>(redisSection);
+
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = redisConfiguration;
+    options.Configuration = redisOptions.Configuration;
 });
+
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
-    return ConnectionMultiplexer.Connect(redisConfiguration);
+    var configurationOptions = ConfigurationOptions.Parse(redisOptions.Configuration);
+    configurationOptions.AbortOnConnectFail = false;
+    configurationOptions.ConnectRetry = 3;
+    configurationOptions.ReconnectRetryPolicy = new ExponentialRetry(5000);
+    configurationOptions.KeepAlive = 60;
+    return ConnectionMultiplexer.Connect(configurationOptions);
 });
 
 // Register application services

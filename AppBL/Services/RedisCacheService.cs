@@ -1,14 +1,16 @@
 ﻿using AppBL.BlModels;
+using AppBL.Configuration;
 using AppBL.Services.Interfaces;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using System.Text.Json;
 
 namespace AppBL.Services;
 
-public class RedisCacheService<TEntity>(IDistributedCache distributedCache, IConnectionMultiplexer redisConnection) : ICacheService<TEntity>
+public class RedisCacheService<TEntity>(IDistributedCache distributedCache, IConnectionMultiplexer redisConnection, IOptions<RedisCacheOptions> options) : ICacheService<TEntity>
 {
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+    private readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(options.Value.CacheDurationSeconds);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly string _registrySetName = $"{typeof(TEntity).Name.ToLowerInvariant()}_cache_keys";
 
@@ -28,7 +30,7 @@ public class RedisCacheService<TEntity>(IDistributedCache distributedCache, ICon
 
         if (result.Items.Any())
         {
-            await distributedCache.SetStringAsync(cacheKey, JsonSerializer.Serialize(result, JsonOptions), new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheDuration }, cancellationToken);
+            await distributedCache.SetStringAsync(cacheKey, JsonSerializer.Serialize(result, JsonOptions), new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = _cacheDuration }, cancellationToken);
             await redisConnection.GetDatabase().SetAddAsync(_registrySetName, cacheKey);
         }
 
@@ -47,7 +49,7 @@ public class RedisCacheService<TEntity>(IDistributedCache distributedCache, ICon
 
         if (entity != null)
         {
-            await distributedCache.SetStringAsync(cacheKey, JsonSerializer.Serialize(entity, JsonOptions), new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheDuration }, cancellationToken);
+            await distributedCache.SetStringAsync(cacheKey, JsonSerializer.Serialize(entity, JsonOptions), new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = _cacheDuration }, cancellationToken);
             await redisConnection.GetDatabase().SetAddAsync(_registrySetName, cacheKey);
         }
 
