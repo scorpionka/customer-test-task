@@ -8,42 +8,24 @@ namespace WebApiTestApp.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 public class ProductsController(
-    IProductService productService,
-    ILogger<ProductsController> logger) : ControllerBase
+    IProductService productService) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<PagedResult<Product>>> GetAll([FromQuery] PagingQuery paging, CancellationToken cancellationToken)
     {
-        try
-        {
-            var paged = await productService.GetAllProductsAsync(paging.EffectivePage, paging.EffectivePageSize, cancellationToken);
-            return Ok(paged.MapToApiPagedResult());
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error retrieving products");
-            return StatusCode(500, "An unexpected error occurred.");
-        }
+        var paged = await productService.GetAllProductsAsync(paging.EffectivePage, paging.EffectivePageSize, cancellationToken);
+        return Ok(paged.MapToApiPagedResult());
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<Product>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        try
+        var product = await productService.GetProductByIdAsync(id, cancellationToken);
+        if (product == null)
         {
-            var product = await productService.GetProductByIdAsync(id, cancellationToken);
-            if (product == null)
-            {
-                return NotFound();
-            }
-
-            return Ok(product.MapToApiProduct());
+            return NotFound();
         }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error retrieving product {ProductId}", id);
-            return StatusCode(500, "An unexpected error occurred.");
-        }
+        return Ok(product.MapToApiProduct());
     }
 
     [HttpPost]
@@ -53,18 +35,9 @@ public class ProductsController(
         {
             return ValidationProblem(ModelState);
         }
-
-        try
-        {
-            var createdProduct = await productService.AddProductAsync(product.MapToBlProduct(), cancellationToken);
-            var apiModel = createdProduct.MapToApiProduct();
-            return CreatedAtAction(nameof(GetById), new { id = apiModel.Id }, apiModel);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error creating product");
-            return StatusCode(500, "An unexpected error occurred.");
-        }
+        var createdProduct = await productService.AddProductAsync(product.MapToBlProduct(), cancellationToken);
+        var apiModel = createdProduct.MapToApiProduct();
+        return CreatedAtAction(nameof(GetById), new { id = apiModel.Id }, apiModel);
     }
 
     [HttpPut("{id:guid}")]
@@ -74,41 +47,22 @@ public class ProductsController(
         {
             return ValidationProblem(ModelState);
         }
-
-        try
+        var updatedProduct = await productService.UpdateProductAsync(id, product.MapToBlProduct(), cancellationToken);
+        if (updatedProduct == null)
         {
-            var updatedProduct = await productService.UpdateProductAsync(id, product.MapToBlProduct(), cancellationToken);
-            if (updatedProduct == null)
-            {
-                return NotFound();
-            }
-
-            return Ok(updatedProduct.MapToApiProduct());
+            return NotFound();
         }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error updating product {ProductId}", id);
-            return StatusCode(500, "An unexpected error occurred.");
-        }
+        return Ok(updatedProduct.MapToApiProduct());
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        try
+        var deleted = await productService.DeleteProductAsync(id, cancellationToken);
+        if (!deleted)
         {
-            var deleted = await productService.DeleteProductAsync(id, cancellationToken);
-            if (!deleted)
-            {
-                return NotFound();
-            }
-
-            return NoContent();
+            return NotFound();
         }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error deleting product {ProductId}", id);
-            return StatusCode(500, "An unexpected error occurred.");
-        }
+        return NoContent();
     }
 }

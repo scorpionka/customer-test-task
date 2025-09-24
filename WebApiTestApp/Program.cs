@@ -7,6 +7,7 @@ using AppDAL.Repositories.Interfaces;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 using DalProduct = AppDAL.DalModels.Product;
 
@@ -17,6 +18,10 @@ builder.Services.AddRouting(options =>
     options.LowercaseUrls = true;
     options.LowercaseQueryStrings = true;
 });
+
+builder.Services.AddSingleton(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+builder.Services.AddProblemDetails();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -63,6 +68,8 @@ if (app.Environment.IsDevelopment())
     });
     app.MapOpenApi();
 }
+
+app.UseExceptionHandler();
 
 app.UseHttpsRedirection();
 
