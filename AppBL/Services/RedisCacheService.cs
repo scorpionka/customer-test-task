@@ -6,80 +6,80 @@ using System.Text.Json;
 
 namespace AppBL.Services;
 
-public class RedisCacheService<TEntity>(IDistributedCache cache, IConnectionMultiplexer connection) : ICacheService<TEntity>
+public class RedisCacheService<TEntity>(IDistributedCache distributedCache, IConnectionMultiplexer redisConnection) : ICacheService<TEntity>
 {
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
     private readonly string _registrySetName = $"{typeof(TEntity).Name.ToLowerInvariant()}_cache_keys";
 
-    public async Task<PagedResult<TEntity>> GetAllAsync(Func<Task<PagedResult<TEntity>>> factory, string key)
+    public async Task<PagedResult<TEntity>> GetAllAsync(Func<Task<PagedResult<TEntity>>> valueFactory, string cacheKey)
     {
-        var cached = await cache.GetStringAsync(key);
-        if (!string.IsNullOrEmpty(cached))
+        var cachedJson = await distributedCache.GetStringAsync(cacheKey);
+        if (!string.IsNullOrEmpty(cachedJson))
         {
-            var deserialized = JsonSerializer.Deserialize<PagedResult<TEntity>>(cached);
-            if (deserialized != null)
+            var cachedResult = JsonSerializer.Deserialize<PagedResult<TEntity>>(cachedJson);
+            if (cachedResult != null)
             {
-                return deserialized;
+                return cachedResult;
             }
         }
 
-        var data = await factory();
+        var result = await valueFactory();
 
-        if (data.Items.Any())
+        if (result.Items.Any())
         {
-            await cache.SetStringAsync(key, JsonSerializer.Serialize(data),
+            await distributedCache.SetStringAsync(cacheKey, JsonSerializer.Serialize(result),
                 new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheDuration });
 
-            await connection.GetDatabase().SetAddAsync(_registrySetName, key);
+            await redisConnection.GetDatabase().SetAddAsync(_registrySetName, cacheKey);
         }
 
-        return data;
+        return result;
     }
 
-    public async Task<TEntity?> GetByIdAsync(Guid id, Func<Task<TEntity?>> factory)
+    public async Task<TEntity?> GetByIdAsync(Guid id, Func<Task<TEntity?>> valueFactory)
     {
-        var key = $"{typeof(TEntity).Name.ToLowerInvariant()}_byid_{id}";
-        var cached = await cache.GetStringAsync(key);
+        var cacheKey = $"{typeof(TEntity).Name.ToLowerInvariant()}_byid_{id}";
+        var cachedJson = await distributedCache.GetStringAsync(cacheKey);
 
-        if (!string.IsNullOrEmpty(cached))
-            return JsonSerializer.Deserialize<TEntity>(cached);
+        if (!string.IsNullOrEmpty(cachedJson))
+            return JsonSerializer.Deserialize<TEntity>(cachedJson);
 
-        var entity = await factory();
+        var entity = await valueFactory();
 
         if (entity != null)
         {
-            await cache.SetStringAsync(key, JsonSerializer.Serialize(entity),
+            await distributedCache.SetStringAsync(cacheKey, JsonSerializer.Serialize(entity),
                 new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheDuration });
 
-            await connection.GetDatabase().SetAddAsync(_registrySetName, key);
+            await redisConnection.GetDatabase().SetAddAsync(_registrySetName, cacheKey);
         }
 
         return entity;
     }
 
-    public async Task InvalidateAsync(params string[] keys)
+    public async Task InvalidateAsync(params string[] cacheKeys)
     {
-        var db = connection.GetDatabase();
-        foreach (var key in keys)
+        var db = redisConnection.GetDatabase();
+        foreach (var cacheKey in cacheKeys)
         {
-            await cache.RemoveAsync(key);
-            await db.SetRemoveAsync(_registrySetName, key);
+            await distributedCache.RemoveAsync(cacheKey);
+            await db.SetRemoveAsync(_registrySetName, cacheKey);
         }
     }
 
-    public async Task InvalidateByPrefixAsync(string prefix)
+    public async Task InvalidateByPrefixAsync(string cacheKeyPrefix)
     {
-        var db = connection.GetDatabase();
+        var db = redisConnection.GetDatabase();
         var keys = await db.SetMembersAsync(_registrySetName);
 
         foreach (var redisValue in keys)
         {
-            string? keyStr = (string?)redisValue;
+            string? cachedKey = (string?)redisValue;
 
-            if (!string.IsNullOrEmpty(keyStr) && keyStr.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(cachedKey) && cachedKey.StartsWith(cacheKeyPrefix, StringComparison.OrdinalIgnoreCase))
             {
-                await cache.RemoveAsync(keyStr);
-                await db.SetRemoveAsync(_registrySetName, keyStr);
+                await distributedCache.RemoveAsync(cachedKey);
+                await db.SetRemoveAsync(_registrySetName, cachedKey);
             }
         }
     }

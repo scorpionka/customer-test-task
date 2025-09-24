@@ -6,15 +6,15 @@ namespace AppDAL.Repositories;
 
 public class ProductRepository() : IRepository<Product>
 {
-    private ImmutableList<Product> _products = [.. GetDefaultSeedData()];
-    private readonly Lock _lock = new();
+    private ImmutableList<Product> _productList = [.. GetSeedData()];
+    private readonly Lock _syncRoot = new();
 
     public async Task<Product> AddAsync(Product product)
     {
         product.Id = Guid.NewGuid();
-        lock (_lock)
+        lock (_syncRoot)
         {
-            _products = _products.Add(product);
+            _productList = _productList.Add(product);
         }
 
         return await Task.FromResult(product);
@@ -22,70 +22,70 @@ public class ProductRepository() : IRepository<Product>
 
     public async Task<bool> DeleteAsync(Guid id)
     {
-        bool removed = false;
-        lock (_lock)
+        bool isRemoved = false;
+        lock (_syncRoot)
         {
-            var existingProduct = _products.FirstOrDefault(p => p.Id == id);
+            var existingProduct = _productList.FirstOrDefault(p => p.Id == id);
             if (existingProduct != null)
             {
-                _products = _products.Remove(existingProduct);
-                removed = true;
+                _productList = _productList.Remove(existingProduct);
+                isRemoved = true;
             }
         }
 
-        return await Task.FromResult(removed);
+        return await Task.FromResult(isRemoved);
     }
 
     public async Task<PagedResult<Product>> GetAllAsync(int? page = null, int? pageSize = null)
     {
-        IEnumerable<Product> products;
+        IEnumerable<Product> items;
         int totalCount;
 
-        lock (_lock)
+        lock (_syncRoot)
         {
-            products = _products;
-            totalCount = _products.Count;
+            items = _productList;
+            totalCount = _productList.Count;
         }
 
         if (page.HasValue && pageSize.HasValue && page > 0 && pageSize > 0)
         {
-            products = products.Skip((page.Value - 1) * pageSize.Value).Take(pageSize.Value);
+            items = items.Skip((page.Value - 1) * pageSize.Value).Take(pageSize.Value);
         }
 
-        var result = new PagedResult<Product>
+        var pagedResult = new PagedResult<Product>
         {
-            Items = products,
+            Items = items,
             TotalCount = totalCount,
             Page = page ?? 1,
             PageSize = pageSize ?? totalCount
         };
 
-        return await Task.FromResult(result);
+        return await Task.FromResult(pagedResult);
     }
 
     public async Task<Product?> GetByIdAsync(Guid id)
     {
-        var product = _products.FirstOrDefault(p => p.Id == id);
+        var product = _productList.FirstOrDefault(p => p.Id == id);
         return await Task.FromResult(product);
     }
 
-    public async Task<Product?> UpdateAsync(Guid id, Product updatedProduct)
+    public async Task<Product?> UpdateAsync(Guid id, Product updated)
     {
-        var existingProduct = _products.FirstOrDefault(p => p.Id == id);
+        var existingProduct = _productList.FirstOrDefault(p => p.Id == id);
         if (existingProduct == null) return null;
 
-        lock (_lock)
+        lock (_syncRoot)
         {
-            existingProduct.Name = updatedProduct.Name;
-            existingProduct.Description = updatedProduct.Description;
-            existingProduct.Price = updatedProduct.Price;
-            existingProduct.Category = updatedProduct.Category;
+            existingProduct.Name = updated.Name;
+            existingProduct.Description = updated.Description;
+            existingProduct.Price = updated.Price;
+            existingProduct.Category = updated.Category;
         }
 
         return await Task.FromResult<Product?>(existingProduct);
     }
 
-    private static IEnumerable<Product> GetDefaultSeedData() =>
+    private static IEnumerable<Product> GetSeedData() =>
     [
         new Product { Name = "Laptop", Description = "15 inch laptop", Price = 1200.50m, Category = "Electronics" },
         new Product { Name = "Headphones", Description = "Noise cancelling", Price = 199.99m, Category = "Electronics" },
